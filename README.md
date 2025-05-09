@@ -20,8 +20,9 @@ This Terraform configuration provisions a HashiCorp Vault OSS server on AWS EC2.
    - Custom user data scripts (optional)
 
 3. Initialize and apply Terraform:
-   ```
+   ```bash
    terraform init
+   terraform plan
    terraform apply --auto-approve
    ```
 
@@ -31,12 +32,35 @@ This Terraform configuration provisions a HashiCorp Vault OSS server on AWS EC2.
 - Installs and configures Vault OSS
 - Sets up basic Vault configuration
 
+## Auto-Unseal Configuration
+
+This module supports AWS KMS auto-unseal for Vault in two ways:
+
+1. **Using an existing KMS key**:
+   ```hcl
+   auto_unseal = true
+   kms_key_id  = "your-existing-kms-key-id"
+   ```
+
+2. **Automatic KMS key creation**:
+   ```hcl
+   auto_unseal = true
+   # Leave kms_key_id empty to auto-create a new KMS key
+   ```
+
+When `auto_unseal = true` and `kms_key_id` is empty, the module will automatically:
+- Create a new AWS KMS key with proper permissions
+- Configure Vault to use this key for auto-unsealing
+- Output the key ID and alias for future reference
+
+This feature makes it simple to set up Vault with auto-unsealing without having to manually create KMS keys first.
+
 ## User Data Script Management
 
-This module now provides completely externalized user data script handling:
+This module provides completely externalized user data script handling:
 
 - **Vault Server**: 
-  - User data is now prepared in the root module
+  - User data is prepared in the root module
   - The default script at `scripts/user_data.sh.tftpl` is used by default
   - You can disable it entirely by setting `enable_vault_user_data = false`
   - Or provide your own custom script with `custom_vault_user_data`
@@ -61,21 +85,49 @@ This flexible approach allows you to:
 ## Accessing Vault
 
 1. Start the EC2 instance (if it's stopped)
-2. Access Vault using: `http://<instance-ip>:8200` or via the ALB if configured
+2. Access Vault using: `https://<instance-ip>:8200` or via the ALB if configured
 3. Initialize Vault if needed with:
-   ```
+   ```bash
    vault operator init
    ```
+4. If using auto-unseal, Vault will automatically unseal when restarted
+
+## Bastion Host
+
+For enhanced security, you can optionally deploy a bastion host as the sole entry point to your Vault server:
+
+1. Set `create_bastion = true` in your terraform.tfvars
+2. Configure bastion parameters:
+   ```hcl
+   bastion_instance_name = "bastion-host"
+   bastion_instance_type = "t3.micro"
+   bastion_public_key    = "/path/to/your/key.pub"
+   bastion_volume_size   = 10
+   ```
+3. After provisioning, you can SSH to the bastion host and then to your Vault server
 
 ## Security Considerations
 
 - This setup is intended for development or testing purposes
 - For production, consider:
-  - Using AWS KMS for auto-unseal
+  - Using AWS KMS for auto-unseal (supported natively by this module)
   - Setting up proper TLS certificates
   - Implementing Vault HA configuration
   - Using a more robust storage backend like DynamoDB
+  - Restricting KMS key policy (the default policy is permissive)
 
 ## Input Variables
 
 Please see the variables.tf files in each module for detailed information about available configuration options.
+
+## Outputs
+
+Key outputs from this module:
+
+| Name | Description |
+|------|-------------|
+| vault_endpoint | The endpoint URL to access Vault |
+| vault_instance_id | The EC2 instance ID of Vault server |
+| vault_public_ip | The public IP of Vault server (if enabled) |
+| vault_auto_unseal_kms_key_id | The KMS key ID used for auto-unsealing (if created) |
+| vault_auto_unseal_kms_key_alias | The KMS key alias used for auto-unsealing (if created) |

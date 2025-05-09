@@ -4,18 +4,28 @@ access_key = "<YOUR_ACCESS_KEY>"
 secret_key = "<YOUR_SECRET_KEY>"
 
 # VPC Configuration
-create_vpc = true  # Set to false to use existing VPC
+create_vpc = false  # Set to false to use existing VPC
 vpc_cidr   = "10.0.0.0/16"
-# vpc_id    = "<EXISTING_VPC_ID>"  # Uncomment if create_vpc = false
-# existing_public_subnets  = ["<SUBNET_ID_1>", "<SUBNET_ID_2>"]  # Uncomment if create_vpc = false
-# existing_private_subnets = ["<SUBNET_ID_1>", "<SUBNET_ID_2>"]  # Uncomment if create_vpc = false
+existing_public_subnets = [
+  "<SUBNET_ID_1>",
+  "<SUBNET_ID_2>",
+  "<SUBNET_ID_3>",
+]
+
+existing_private_subnets = [
+  "<SUBNET_ID_1>",
+  "<SUBNET_ID_2>",
+  "<SUBNET_ID_3>",
+]
+
+vpc_id = "<EXISTING_VPC_ID>"  # Required if create_vpc = false
 
 # EC2 Configuration
-instance_name             = "vault-server"
-instance_type             = "t3.medium"
+instance_name               = "vault-server"
+instance_type               = "t3.medium"
 associate_public_ip_address = true
-public_key                = "<PATH_TO_PUBLIC_KEY>"  # Optional: SSH key path
-volume_size               = 20
+public_key                  = "/path/to/your/public_key.pub"  # Path to SSH public key
+volume_size                 = 20
 
 # Vault Configuration
 vault_version   = "1.15.4"
@@ -24,10 +34,18 @@ enable_ui       = true
 
 # Auto-unseal Configuration
 auto_unseal = false
-# kms_key_id  = "<KMS_KEY_ID>"  # Uncomment if auto_unseal = true
+# kms_key_id  = "<KMS_KEY_ID>"  # Uncomment if auto_unseal = true and you have an existing key
+                                # If auto_unseal = true and kms_key_id is empty, a new key will be created
 
 # ALB Configuration
 create_alb = false  # Set to true to create an ALB
 
 # Environment
-environment = "dev"
+environment = "dev"  # Options: dev, staging, prod
+
+# Bastion Host Configuration
+create_bastion        = false
+bastion_instance_name = "bastion-host"
+bastion_instance_type = "t3.micro"
+bastion_public_key    = "/path/to/your/public_key.pub"  # Can be different from vault server key
+bastion_volume_size   = 10

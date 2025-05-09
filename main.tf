@@ -14,6 +14,41 @@ provider "aws" {
   secret_key = var.secret_key
 }
 
+# Create a KMS key for auto-unseal if needed
+resource "aws_kms_key" "vault_auto_unseal" {
+  count       = var.auto_unseal && var.kms_key_id == "" ? 1 : 0
+  description = "KMS key for Vault auto-unseal"
+
+  tags = {
+    Name        = "vault-auto-unseal-key"
+    Environment = var.environment
+    Project     = "Vault"
+  }
+
+  enable_key_rotation = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "*" # This should be restricted in production
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_kms_alias" "vault_auto_unseal" {
+  count         = var.auto_unseal && var.kms_key_id == "" ? 1 : 0
+  name          = "alias/vault-auto-unseal-${var.environment}"
+  target_key_id = aws_kms_key.vault_auto_unseal[0].key_id
+}
+
 # VPC Module
 module "vpc" {
   source = "./modules/vpc"
@@ -29,13 +64,16 @@ module "vpc" {
 
 # Prepare user data for Vault server
 locals {
+  # Determine which KMS key ID to use
+  effective_kms_key_id = var.auto_unseal && var.kms_key_id == "" && length(aws_kms_key.vault_auto_unseal) > 0 ? aws_kms_key.vault_auto_unseal[0].key_id : var.kms_key_id
+
   # Generate user data for Vault server if needed
   vault_user_data = var.custom_vault_user_data != "" ? var.custom_vault_user_data : (
     var.enable_vault_user_data ? templatefile("${path.root}/scripts/user_data.sh.tftpl", {
       vault_version    = var.vault_version
       storage_backend  = var.storage_backend
       auto_unseal      = var.auto_unseal
-      kms_key_id       = var.kms_key_id
+      kms_key_id       = local.effective_kms_key_id
       enable_ui        = var.enable_ui
       enable_public_ip = var.associate_public_ip_address
     }) : ""

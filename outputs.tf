@@ -53,3 +53,14 @@ output "ssh_to_bastion" {
   description = "SSH command to connect to the Bastion host"
   value       = var.create_bastion ? "ssh ubuntu@${module.ec2_bastion[0].vault_public_ip}" : null
 }
+
+# Auto-unseal KMS key output
+output "vault_auto_unseal_kms_key_id" {
+  description = "ID of the KMS key created for Vault auto-unseal (if applicable)"
+  value       = var.auto_unseal && var.kms_key_id == "" ? aws_kms_key.vault_auto_unseal[0].key_id : var.kms_key_id
+}
+
+output "vault_auto_unseal_kms_key_alias" {
+  description = "Alias of the KMS key created for Vault auto-unseal (if applicable)"
+  value       = var.auto_unseal && var.kms_key_id == "" ? aws_kms_alias.vault_auto_unseal[0].name : null
+}
