@@ -15,5 +15,5 @@ output "vault_public_ip" {
 
 output "vault_endpoint" {
   description = "Vault API endpoint"
-  value       = var.create_alb && length(var.public_subnet_ids) > 0 ? "http://${aws_lb.vault_alb[0].dns_name}:8200" : (var.associate_public_ip_address ? "http://${module.vault_server.public_ip}:8200" : "http://${module.vault_server.private_ip}:8200")
+  value       = var.create_alb && length(var.public_subnet_ids) > 0 ? "https://${aws_lb.vault_alb[0].dns_name}:8200" : (var.associate_public_ip_address ? "https://${module.vault_server.public_ip}:8200" : "http://${module.vault_server.private_ip}:8200")
 }
